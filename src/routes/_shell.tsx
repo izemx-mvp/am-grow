@@ -163,8 +163,8 @@ function Header() {
     }
     const zone = zones.find((z) => z.nom.toLowerCase().includes(term));
     if (zone) {
-      navigate({ to: "/configuration", search: { tab: "zones" } });
-      toast.success(`Zone trouvée : ${zone.nom}`);
+      navigate({ to: "/configuration" });
+      toast.success(`Zone trouvée : ${zone.nom} — onglet Zones & Cultures`);
       setQ("");
       return;
     }
