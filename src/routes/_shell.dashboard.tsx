@@ -12,6 +12,8 @@ import {
   YAxis,
 } from "recharts";
 
+import { useEffect, useState } from "react";
+
 import { CountUp } from "@/components/CountUp";
 import { fmtMAD, fmtTime, useFarm } from "@/lib/farm-store";
 
