@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowLeft, MapPin, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ImageIcon, MapPin, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { fmtDate, fmtMAD, useFarm, type Depense } from "@/lib/farm-store";
+import { CATEGORIES, fmtDate, fmtMAD, useFarm, type Categorie, type Depense, type Fiche } from "@/lib/farm-store";
 
 export const Route = createFileRoute("/_shell/suivi/$ficheId")({
   head: () => ({
@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_shell/suivi/$ficheId")({
       { title: "Détail de la fiche de suivi — AM Grow Control" },
       {
         name: "description",
-        content: "Détail d'une intervention agronomique : produit, quantité, historique et dépenses associées.",
+        content: "Détail d'une intervention agronomique : produit, dose, délai avant récolte et dépenses associées.",
       },
       { property: "og:title", content: "Détail de la fiche de suivi — AM Grow Control" },
       { property: "og:description", content: "Intervention agronomique détaillée et dépenses rattachées." },
@@ -22,9 +22,18 @@ export const Route = createFileRoute("/_shell/suivi/$ficheId")({
   component: FicheDetail,
 });
 
+const categorieDe = (t: Fiche["type"]): Categorie =>
+  t === "Traitement phytosanitaire" ? "Intrants phytosanitaires" : t === "Apport d'engrais" ? "Engrais" : "Main d'œuvre";
+
+const etatColor: Record<string, string> = {
+  Bon: "bg-primary/10 text-primary",
+  Moyen: "bg-warning/20 text-accent-foreground",
+  "À surveiller": "bg-destructive/10 text-destructive",
+};
+
 function FicheDetail() {
   const { ficheId } = useParams({ from: "/_shell/suivi/$ficheId" });
-  const { fiches, zones, depenses, addDepense } = useFarm();
+  const { fiches, zones, depenses, addDepense, ficheDar } = useFarm();
   const fiche = fiches.find((f) => f.id === ficheId);
 
   if (!fiche) {
@@ -40,6 +49,40 @@ function FicheDetail() {
 
   const zone = zones.find((z) => z.id === fiche.zoneId);
   const liees = depenses.filter((d) => d.ficheId === fiche.id);
+  const dar = ficheDar(fiche);
+  const autres = fiches.filter((f) => f.zoneId === fiche.zoneId && f.id !== fiche.id);
+
+  const champs: [string, string][] = [
+    ["Date", `${fmtDate(fiche.date)}${fiche.heure ? ` à ${fiche.heure}` : ""}`],
+    ["Zone", zone?.nom ?? "—"],
+    ["Culture", zone?.culture ?? "—"],
+    ["Responsable", fiche.responsable],
+  ];
+  if (fiche.type === "Traitement phytosanitaire") {
+    champs.push(
+      ["Produit", fiche.produit],
+      ["Matière active", fiche.matiereActive ?? "—"],
+      ["Cible", fiche.cible ?? "—"],
+      ["Dose", fiche.quantite],
+      ["Méthode", fiche.methode ?? "—"],
+      ["DAR — délai avant récolte", fiche.dar ? `${fiche.dar} jours` : "—"],
+    );
+  } else if (fiche.type === "Apport d'engrais") {
+    champs.push(
+      ["Engrais", fiche.produit],
+      ["Type", fiche.typeEngrais ?? "—"],
+      ["Dose", fiche.quantite],
+      ["Méthode", fiche.methode ?? "—"],
+      ["Stade de la culture", fiche.stadeCulture ?? "—"],
+    );
+  } else {
+    champs.push(
+      ["Stade phénologique", fiche.stade ?? "—"],
+      ["État sanitaire", fiche.etatSanitaire ?? "—"],
+      ["Photos", `${fiche.photos?.length ?? 0} photo(s)`],
+    );
+  }
+  champs.push(["Dépenses associées", fmtMAD(liees.reduce((s, d) => s + d.montant, 0))]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -54,26 +97,37 @@ function FicheDetail() {
             <h1 className="font-display text-2xl font-bold">
               {fiche.type} — {fiche.produit}
             </h1>
+            {fiche.etatSanitaire && (
+              <span
+                className={`mt-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${etatColor[fiche.etatSanitaire]}`}
+              >
+                État sanitaire : {fiche.etatSanitaire}
+              </span>
+            )}
           </div>
           <AssocierDepense
             zoneId={fiche.zoneId}
             ficheId={fiche.id}
+            defaultCat={categorieDe(fiche.type)}
             onAdd={(d) => {
               addDepense(d);
-              toast.success("Dépense associée — totaux de la zone mis à jour");
+              toast.success("Dépense associée — en attente de validation dans Analytique");
             }}
           />
         </div>
 
+        {dar && (
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <p className="text-destructive">
+              Récolte à ne pas anticiper avant le {fmtDate(dar.dateLimite)} — délai avant récolte en cours. La
+              récolte de cette zone est actuellement prévue le {fmtDate(dar.recolte)}.
+            </p>
+          </div>
+        )}
+
         <dl className="mt-6 grid gap-4 sm:grid-cols-3">
-          {[
-            ["Date", fmtDate(fiche.date)],
-            ["Zone", zone?.nom ?? "—"],
-            ["Culture", zone?.culture ?? "—"],
-            ["Quantité", fiche.quantite],
-            ["Responsable", fiche.responsable],
-            ["Dépenses associées", fmtMAD(liees.reduce((s, d) => s + d.montant, 0))],
-          ].map(([k, v]) => (
+          {champs.map(([k, v]) => (
             <div key={k} className="rounded-xl bg-muted/60 p-3">
               <dt className="text-xs text-muted-foreground">{k}</dt>
               <dd className="mt-0.5 font-medium">{v}</dd>
@@ -81,13 +135,24 @@ function FicheDetail() {
           ))}
         </dl>
 
+        {fiche.photos && fiche.photos.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {fiche.photos.map((p) => (
+              <span key={p} className="flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1 text-xs">
+                <ImageIcon className="h-3.5 w-3.5 text-primary" /> {p}
+              </span>
+            ))}
+          </div>
+        )}
+
         <p className="mt-4 text-sm text-muted-foreground">{fiche.notes}</p>
 
         <Link
-          to="/configuration"
+          to="/suivi/zone/$zoneId"
+          params={{ zoneId: fiche.zoneId }}
           className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
         >
-          <MapPin className="h-4 w-4" /> Voir la zone {zone?.nom} dans le référentiel
+          <MapPin className="h-4 w-4" /> Voir la zone {zone?.nom} et ses {autres.length} autres fiches
         </Link>
       </div>
 
@@ -121,6 +186,13 @@ function FicheDetail() {
                 <li key={d.id} className="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2 text-sm">
                   <span>
                     {d.libelle} · <span className="text-muted-foreground">{d.categorie}</span>
+                    <span
+                      className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        d.statut === "Validé" ? "bg-primary/10 text-primary" : "bg-warning/20 text-accent-foreground"
+                      }`}
+                    >
+                      {d.statut}
+                    </span>
                   </span>
                   <span className="font-semibold">{fmtMAD(d.montant)}</span>
                 </li>
@@ -139,15 +211,17 @@ function FicheDetail() {
 function AssocierDepense({
   zoneId,
   ficheId,
+  defaultCat,
   onAdd,
 }: {
   zoneId: string;
   ficheId: string;
+  defaultCat: Categorie;
   onAdd: (d: Omit<Depense, "id">) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [montant, setMontant] = useState(3500);
-  const [categorie, setCategorie] = useState<Depense["categorie"]>("Intrants");
+  const [categorie, setCategorie] = useState<Categorie>(defaultCat);
   const [libelle, setLibelle] = useState("Achat d'intrants liés à l'intervention");
   const ctl = "h-10 w-full rounded-lg border border-border bg-background/80 px-3 text-sm outline-none focus:border-primary/60";
 
@@ -168,14 +242,10 @@ function AssocierDepense({
         </label>
         <label className="space-y-1.5">
           <span className="text-sm font-medium">Catégorie</span>
-          <select
-            className={ctl}
-            value={categorie}
-            onChange={(e) => setCategorie(e.target.value as Depense["categorie"])}
-          >
-            <option>Intrants</option>
-            <option>Main d'œuvre</option>
-            <option>Équipement</option>
+          <select className={ctl} value={categorie} onChange={(e) => setCategorie(e.target.value as Categorie)}>
+            {CATEGORIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
           </select>
         </label>
         <label className="space-y-1.5">
@@ -190,6 +260,7 @@ function AssocierDepense({
               categorie,
               libelle,
               montant,
+              statut: "En attente",
               ficheId,
             });
             setOpen(false);
