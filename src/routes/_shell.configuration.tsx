@@ -287,15 +287,17 @@ function SeuilsTab({ onSave }: { onSave: () => void }) {
 
   return (
     <div className="glass glass-lift rounded-2xl p-6">
-      <h2 className="font-display text-lg font-semibold">Budgets mensuels par zone (MAD)</h2>
+      <h2 className="font-display text-lg font-semibold">Budgets mensuels par zone et catégorie (MAD)</h2>
       <div className="mt-4 overflow-x-auto scroll-green">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[860px] text-sm">
           <thead>
             <tr className="border-b text-left text-muted-foreground">
               <th className="py-2 pr-3 font-medium">Zone</th>
-              <th className="py-2 pr-3 font-medium">Intrants</th>
-              <th className="py-2 pr-3 font-medium">Main d'œuvre</th>
-              <th className="py-2 pr-3 font-medium">Équipement</th>
+              {CATEGORIES.map((c) => (
+                <th key={c} className="py-2 pr-3 font-medium">
+                  {c}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -303,31 +305,17 @@ function SeuilsTab({ onSave }: { onSave: () => void }) {
               const b = budgets.find((x) => x.zoneId === z.id);
               return (
                 <tr key={z.id} className="border-b last:border-0">
-                  <td className="py-2 pr-3 font-medium">{z.nom}</td>
-                  <td className="py-2 pr-3">
-                    <input
-                      type="number"
-                      className={input}
-                      value={b?.intrants ?? 0}
-                      onChange={(e) => setBudget(z.id, { intrants: Number(e.target.value) })}
-                    />
-                  </td>
-                  <td className="py-2 pr-3">
-                    <input
-                      type="number"
-                      className={input}
-                      value={b?.mainOeuvre ?? 0}
-                      onChange={(e) => setBudget(z.id, { mainOeuvre: Number(e.target.value) })}
-                    />
-                  </td>
-                  <td className="py-2 pr-3">
-                    <input
-                      type="number"
-                      className={input}
-                      value={b?.equipement ?? 0}
-                      onChange={(e) => setBudget(z.id, { equipement: Number(e.target.value) })}
-                    />
-                  </td>
+                  <td className="py-2 pr-3 font-medium whitespace-nowrap">{z.nom}</td>
+                  {CATEGORIES.map((c) => (
+                    <td key={c} className="py-2 pr-3">
+                      <input
+                        type="number"
+                        className={input}
+                        value={b?.montants[c] ?? 0}
+                        onChange={(e) => setBudget(z.id, c, Number(e.target.value))}
+                      />
+                    </td>
+                  ))}
                 </tr>
               );
             })}
