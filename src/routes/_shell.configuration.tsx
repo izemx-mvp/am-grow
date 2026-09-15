@@ -60,60 +60,12 @@ function ConfigurationPage() {
         )}
       </div>
 
-      <Tabs defaultValue="connexions">
+      <Tabs defaultValue="zones">
         <TabsList className="glass rounded-xl">
-          <TabsTrigger value="connexions">Connexions</TabsTrigger>
           <TabsTrigger value="zones">Zones & Cultures</TabsTrigger>
           <TabsTrigger value="seuils">Seuils budgétaires & alertes</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="connexions" className="mt-4">
-          <div className="glass glass-lift rounded-2xl p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="font-display text-lg font-semibold">Zoho Books</h2>
-                <p className="text-sm text-muted-foreground">
-                  Dernière synchronisation : {fmtTime(farm.lastSync)}
-                </p>
-              </div>
-              <span className="rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
-                Connecté ✅
-              </span>
-            </div>
-
-            <p className="mt-4 max-w-3xl text-sm text-muted-foreground">
-              Zoho Books reste l'outil de référence pour la comptabilité (achats, ventes, banque, fournisseurs,
-              paiements). Cette plateforme s'y connecte pour enrichir l'analyse par zone et par culture, sans
-              dupliquer ni remplacer cette partie.
-            </p>
-
-            {testing && (
-              <div className="mt-4 space-y-2">
-                <p className="flex items-center gap-2 text-sm text-primary">
-                  <Loader2 className="h-4 w-4 animate-spin" /> {step}
-                </p>
-                <div className="shimmer h-10 w-full" />
-                <div className="shimmer h-10 w-2/3" />
-              </div>
-            )}
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                onClick={testConnexion}
-                disabled={testing}
-                className="shine h-10 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-              >
-                Tester la connexion
-              </button>
-              <button
-                onClick={() => save("Connexion")}
-                className="shine flex h-10 items-center gap-2 rounded-xl border border-primary/30 bg-card px-5 text-sm font-semibold text-primary"
-              >
-                <Save className="h-4 w-4" /> Enregistrer la configuration
-              </button>
-            </div>
-          </div>
-        </TabsContent>
 
         <TabsContent value="zones" className="mt-4">
           <ZonesTab onSave={() => save("Référentiel des zones")} />
