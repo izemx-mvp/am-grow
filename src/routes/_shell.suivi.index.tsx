@@ -26,7 +26,6 @@ type SortKey = "date" | "zone" | "type" | "responsable";
 
 const TYPES: Fiche["type"][] = ["Traitement phytosanitaire", "Engrais", "Suivi de plantation"];
 
-export default function noop() {}
 
 function SuiviPage() {
   const { fiches, zones, addFiche } = useFarm();
