@@ -39,6 +39,7 @@ function SuiviPage() {
   const [open, setOpen] = useState(false);
 
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.nom ?? "—";
+  const zoneCulture = (id: string) => zones.find((z) => z.id === id)?.culture ?? "";
 
   // UNE SEULE source de vérité filtrée
   const filtered = useMemo(() => {
@@ -46,7 +47,7 @@ function SuiviPage() {
     const now = Date.now();
     const limits: Record<string, number> = { "30": 30, "90": 90, "180": 180 };
     const out = fiches.filter((f) => {
-      const zn = zoneName(f.zoneId).toLowerCase();
+      const zn = `${zoneName(f.zoneId)} ${zoneCulture(f.zoneId)}`.toLowerCase();
       const okQ =
         !term ||
         [f.ref, f.produit, f.type, f.responsable, f.notes, zn].some((v) => v.toLowerCase().includes(term));
