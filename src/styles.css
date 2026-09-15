@@ -2,22 +2,6 @@
 @source "../src";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -25,7 +9,6 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -34,14 +17,19 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-glow: var(--primary-glow);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-glow: var(--accent-glow);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -59,77 +47,54 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: "Poppins", ui-sans-serif, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, sans-serif;
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --foreground: oklch(0.24 0.023 156);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.24 0.023 156);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.24 0.023 156);
+  /* #1F5039 */
+  --primary: oklch(0.386 0.063 159.5);
+  --primary-foreground: oklch(0.985 0.01 140);
+  /* #163B29 */
+  --primary-dark: oklch(0.309 0.052 159);
+  /* #2E7A52 */
+  --primary-glow: oklch(0.523 0.089 158);
+  /* #9CA3A0 */
+  --secondary: oklch(0.945 0.006 160);
+  --secondary-foreground: oklch(0.386 0.063 159.5);
+  --muted: oklch(0.966 0.008 155);
+  --muted-foreground: oklch(0.66 0.012 158);
+  /* #E7B84C */
+  --accent: oklch(0.805 0.128 85);
+  --accent-foreground: oklch(0.28 0.05 90);
+  --accent-soft: oklch(0.973 0.028 88);
+  --accent-glow: oklch(0.867 0.098 86);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
-}
-
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --destructive-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.72 0.17 60);
+  --border: oklch(0.925 0.009 155);
+  --input: oklch(0.925 0.009 155);
+  --ring: oklch(0.523 0.089 158);
+  --chart-1: oklch(0.386 0.063 159.5);
+  --chart-2: oklch(0.523 0.089 158);
+  --chart-3: oklch(0.805 0.128 85);
+  --chart-4: oklch(0.867 0.098 86);
+  --chart-5: oklch(0.66 0.012 158);
+  --sidebar: oklch(0.99 0.006 150);
+  --sidebar-foreground: oklch(0.24 0.023 156);
+  --sidebar-primary: oklch(0.386 0.063 159.5);
+  --sidebar-primary-foreground: oklch(0.985 0.01 140);
+  --sidebar-accent: oklch(0.966 0.008 155);
+  --sidebar-accent-foreground: oklch(0.386 0.063 159.5);
+  --sidebar-border: oklch(0.925 0.009 155);
+  --sidebar-ring: oklch(0.523 0.089 158);
 }
 
 @layer base {
@@ -140,5 +105,240 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
   }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+/* ---------- Aurora animated background ---------- */
+@keyframes aurora-a {
+  0% {
+    transform: translate3d(-8%, -6%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(12%, 8%, 0) scale(1.18);
+  }
+  100% {
+    transform: translate3d(-8%, -6%, 0) scale(1);
+  }
+}
+@keyframes aurora-b {
+  0% {
+    transform: translate3d(10%, 4%, 0) scale(1.1);
+  }
+  50% {
+    transform: translate3d(-10%, -10%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(10%, 4%, 0) scale(1.1);
+  }
+}
+@keyframes aurora-c {
+  0% {
+    transform: translate3d(0, 10%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(8%, -8%, 0) scale(1.22);
+  }
+  100% {
+    transform: translate3d(0, 10%, 0) scale(1);
+  }
+}
+
+@utility aurora-layer {
+  position: fixed;
+  inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background-color: var(--background);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(90px);
+  }
+  &::before {
+    width: 70vw;
+    height: 70vw;
+    left: -10vw;
+    top: -18vw;
+    background: radial-gradient(
+      circle at center,
+      color-mix(in oklab, var(--primary-glow) 40%, transparent) 0%,
+      transparent 70%
+    );
+    animation: aurora-a 26s ease-in-out infinite;
+  }
+  &::after {
+    width: 62vw;
+    height: 62vw;
+    right: -12vw;
+    top: 4vw;
+    background: radial-gradient(
+      circle at center,
+      color-mix(in oklab, var(--accent-glow) 45%, transparent) 0%,
+      transparent 70%
+    );
+    animation: aurora-b 22s ease-in-out infinite;
+  }
+}
+
+@utility aurora-blob-3 {
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  width: 60vw;
+  height: 60vw;
+  left: 20vw;
+  bottom: -30vw;
+  border-radius: 9999px;
+  filter: blur(100px);
+  background: radial-gradient(
+    circle at center,
+    color-mix(in oklab, var(--primary-glow) 32%, transparent) 0%,
+    color-mix(in oklab, var(--accent-glow) 18%, transparent) 45%,
+    transparent 72%
+  );
+  animation: aurora-c 30s ease-in-out infinite;
+}
+
+/* ---------- Frosted glass cards ---------- */
+@utility glass {
+  background: color-mix(in oklab, var(--card) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid color-mix(in oklab, var(--primary) 12%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--primary) 10%, transparent),
+    0 18px 40px -22px color-mix(in oklab, var(--primary) 45%, transparent);
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease;
+}
+
+@utility glass-lift {
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 2px 4px color-mix(in oklab, var(--primary) 12%, transparent),
+      0 28px 60px -24px color-mix(in oklab, var(--primary) 60%, transparent);
+  }
+}
+
+@utility glass-gold {
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--accent) 16%, transparent),
+    0 18px 44px -22px color-mix(in oklab, var(--accent) 70%, transparent);
+}
+
+/* ---------- Button shine ---------- */
+@utility shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -140%;
+    width: 60%;
+    background: linear-gradient(
+      100deg,
+      transparent,
+      color-mix(in oklab, white 55%, transparent),
+      transparent
+    );
+    transform: skewX(-18deg);
+    pointer-events: none;
+    transition: left 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  &:hover::after {
+    left: 140%;
+  }
+}
+
+/* ---------- Shimmer skeleton ---------- */
+@keyframes shimmer-sweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@utility shimmer {
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--muted) 90%, transparent) 25%,
+    color-mix(in oklab, var(--primary-glow) 18%, white) 50%,
+    color-mix(in oklab, var(--muted) 90%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.4s linear infinite;
+  border-radius: 0.5rem;
+}
+
+/* ---------- Glow pulse (floating AI button / alert badges) ---------- */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 14px color-mix(in oklab, var(--accent) 0%, transparent);
+  }
+}
+@utility glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes alert-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@utility alert-pulse {
+  animation: alert-pulse 1.6s ease-in-out infinite;
+}
+
+/* ---------- Custom scrollbar ---------- */
+@utility scroll-green {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--primary-glow) 55%, transparent) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--primary-glow) 45%, transparent);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--primary) 60%, transparent);
+  }
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--primary-glow) 45%, transparent) transparent;
 }
