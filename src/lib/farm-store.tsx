@@ -135,11 +135,11 @@ const mk = (a: number, b: number, c: number, d: number, e: number): Record<Categ
 });
 
 const BUDGETS: Budget[] = [
-  { zoneId: "z1", montants: mk(6000, 6000, 16000, 5000, 4000) },
+  { zoneId: "z1", montants: mk(3500, 3500, 3500, 2000, 2500) },
   { zoneId: "z2", montants: mk(4500, 4500, 11000, 4000, 3000) },
   { zoneId: "z3", montants: mk(7000, 7000, 18000, 6000, 5000) },
   { zoneId: "z4", montants: mk(5000, 5000, 12000, 4000, 3500) },
-  { zoneId: "z5", montants: mk(3500, 3500, 9000, 5000, 3000) },
+  { zoneId: "z5", montants: mk(2500, 2000, 4500, 1500, 2500) },
 ];
 
 const DEFAULT_BUDGET = mk(4000, 4000, 10000, 4000, 3000);
