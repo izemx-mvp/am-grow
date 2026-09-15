@@ -1,5 +1,14 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
+export const CATEGORIES = [
+  "Intrants phytosanitaires",
+  "Engrais",
+  "Main d'œuvre",
+  "Équipement",
+  "Transport/Export",
+] as const;
+export type Categorie = (typeof CATEGORIES)[number];
+
 export type Zone = {
   id: string;
   nom: string;
@@ -7,38 +16,50 @@ export type Zone = {
   famille: "Maraîchage" | "Fruits rouges";
   superficie: number;
   responsable: string;
+  prochaineRecolte?: string | undefined;
 };
+
+export type TypeFiche = "Traitement phytosanitaire" | "Apport d'engrais" | "Suivi de plantation";
 
 export type Fiche = {
   id: string;
   ref: string;
   date: string;
+  heure?: string | undefined;
   zoneId: string;
-  type: "Traitement phytosanitaire" | "Engrais" | "Suivi de plantation";
+  type: TypeFiche;
   produit: string;
   quantite: string;
   responsable: string;
   notes: string;
   historique: { date: string; label: string }[];
   isNew?: boolean | undefined;
+  // Traitement phytosanitaire
+  matiereActive?: string | undefined;
+  cible?: string | undefined;
+  methode?: string | undefined;
+  dar?: number | undefined;
+  // Apport d'engrais
+  typeEngrais?: string | undefined;
+  stadeCulture?: string | undefined;
+  // Suivi de plantation
+  stade?: string | undefined;
+  etatSanitaire?: "Bon" | "Moyen" | "À surveiller" | undefined;
+  photos?: string[] | undefined;
 };
 
 export type Depense = {
   id: string;
   date: string;
   zoneId: string;
-  categorie: "Intrants" | "Main d'œuvre" | "Équipement";
+  categorie: Categorie;
   libelle: string;
   montant: number;
+  statut: "Validé" | "En attente";
   ficheId?: string | undefined;
 };
 
-export type Budget = {
-  zoneId: string;
-  intrants: number;
-  mainOeuvre: number;
-  equipement: number;
-};
+export type Budget = { zoneId: string; montants: Record<Categorie, number> };
 
 export type Rapport = {
   id: string;
@@ -53,6 +74,9 @@ export type Activite = { id: string; label: string; time: string };
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const daysAgo = (n: number) => iso(new Date(Date.now() - n * 86400000));
+const daysAhead = (n: number) => iso(new Date(Date.now() + n * 86400000));
+
+export const addDays = (date: string, n: number) => iso(new Date(new Date(date).getTime() + n * 86400000));
 
 const ZONES: Zone[] = [
   {
@@ -62,6 +86,7 @@ const ZONES: Zone[] = [
     famille: "Maraîchage",
     superficie: 3.2,
     responsable: "Youssef Ait Baha",
+    prochaineRecolte: daysAhead(3),
   },
   {
     id: "z2",
@@ -70,6 +95,7 @@ const ZONES: Zone[] = [
     famille: "Maraîchage",
     superficie: 2.5,
     responsable: "Hassan Boukhris",
+    prochaineRecolte: daysAhead(18),
   },
   {
     id: "z3",
@@ -78,6 +104,7 @@ const ZONES: Zone[] = [
     famille: "Fruits rouges",
     superficie: 4.1,
     responsable: "Fatima Zahra El Idrissi",
+    prochaineRecolte: daysAhead(9),
   },
   {
     id: "z4",
@@ -86,6 +113,7 @@ const ZONES: Zone[] = [
     famille: "Fruits rouges",
     superficie: 2.8,
     responsable: "Karim Oulhaj",
+    prochaineRecolte: daysAhead(21),
   },
   {
     id: "z5",
@@ -94,90 +122,143 @@ const ZONES: Zone[] = [
     famille: "Maraîchage",
     superficie: 6.4,
     responsable: "Said Amrani",
+    prochaineRecolte: daysAhead(12),
   },
 ];
 
+const mk = (a: number, b: number, c: number, d: number, e: number): Record<Categorie, number> => ({
+  "Intrants phytosanitaires": a,
+  Engrais: b,
+  "Main d'œuvre": c,
+  Équipement: d,
+  "Transport/Export": e,
+});
+
 const BUDGETS: Budget[] = [
-  { zoneId: "z1", intrants: 12000, mainOeuvre: 16000, equipement: 5000 },
-  { zoneId: "z2", intrants: 9000, mainOeuvre: 11000, equipement: 4000 },
-  { zoneId: "z3", intrants: 14000, mainOeuvre: 18000, equipement: 6000 },
-  { zoneId: "z4", intrants: 10000, mainOeuvre: 12000, equipement: 4000 },
-  { zoneId: "z5", intrants: 7000, mainOeuvre: 9000, equipement: 5000 },
+  { zoneId: "z1", montants: mk(6000, 6000, 16000, 5000, 4000) },
+  { zoneId: "z2", montants: mk(4500, 4500, 11000, 4000, 3000) },
+  { zoneId: "z3", montants: mk(7000, 7000, 18000, 6000, 5000) },
+  { zoneId: "z4", montants: mk(5000, 5000, 12000, 4000, 3500) },
+  { zoneId: "z5", montants: mk(3500, 3500, 9000, 5000, 3000) },
 ];
 
-const produits: Record<Fiche["type"], string[]> = {
-  "Traitement phytosanitaire": [
-    "Fongicide cuivre",
-    "Insecticide bio (Bacillus)",
-    "Traitement soufre mouillable",
-    "Acaricide",
-  ],
-  Engrais: ["Engrais NPK 12-12-17", "Nitrate de calcium", "Sulfate de potassium", "Compost organique"],
-  "Suivi de plantation": [
-    "Contrôle stade floraison",
-    "Comptage plants",
-    "Contrôle irrigation goutte-à-goutte",
-    "Relevé de vigueur végétative",
-  ],
-};
+const DEFAULT_BUDGET = mk(4000, 4000, 10000, 4000, 3000);
+
+const PRODUITS_PHYTO = [
+  { nom: "Fongicide cuivre Cuprofix", ma: "Oxychlorure de cuivre", cible: "Mildiou", dar: 7 },
+  { nom: "Bactospéine WG", ma: "Bacillus thuringiensis", cible: "Tuta absoluta", dar: 3 },
+  { nom: "Soufre mouillable Thiovit", ma: "Soufre 80%", cible: "Oïdium", dar: 5 },
+  { nom: "Vertimec Pro", ma: "Abamectine", cible: "Acariens (Tetranychus)", dar: 14 },
+];
+const METHODES_PHYTO = ["Pulvérisation", "Goutte-à-goutte", "Brumisation"];
+const ENGRAIS = [
+  { nom: "Engrais NPK 12-12-17", type: "NPK" },
+  { nom: "Nitrate de calcium", type: "Oligo-éléments" },
+  { nom: "Sulfate de potassium", type: "NPK" },
+  { nom: "Compost organique", type: "Organique" },
+];
+const METHODES_ENGRAIS = ["Fertigation", "Épandage manuel", "Pulvérisation foliaire"];
+const STADES = ["Levée", "Croissance végétative", "Floraison", "Fructification", "Récolte"];
+const ETATS: Fiche["etatSanitaire"][] = ["Bon", "Moyen", "À surveiller"];
+
+export const PRODUITS_PHYTO_REF = PRODUITS_PHYTO;
+export const METHODES_PHYTO_REF = METHODES_PHYTO;
+export const METHODES_ENGRAIS_REF = METHODES_ENGRAIS;
+export const TYPES_ENGRAIS_REF = ["NPK", "Organique", "Foliaire", "Oligo-éléments"];
+export const STADES_REF = STADES;
+export const TYPES_FICHE: TypeFiche[] = ["Traitement phytosanitaire", "Apport d'engrais", "Suivi de plantation"];
+
+const RESPONSABLES = [
+  "Youssef Ait Baha",
+  "Hassan Boukhris",
+  "Fatima Zahra El Idrissi",
+  "Karim Oulhaj",
+  "Said Amrani",
+];
 
 function buildFiches(): Fiche[] {
-  const types: Fiche["type"][] = ["Traitement phytosanitaire", "Engrais", "Suivi de plantation"];
-  const resp = [
-    "Youssef Ait Baha",
-    "Hassan Boukhris",
-    "Fatima Zahra El Idrissi",
-    "Karim Oulhaj",
-    "Said Amrani",
-  ];
   const out: Fiche[] = [];
-  for (let i = 0; i < 20; i++) {
-    const type = types[i % 3]!;
+  for (let i = 0; i < 25; i++) {
+    const type = TYPES_FICHE[i % 3]!;
     const zone = ZONES[i % ZONES.length]!;
-    const produit = produits[type][i % 4]!;
-    const quantite =
-      type === "Engrais" ? `${20 + i * 2} kg` : type === "Traitement phytosanitaire" ? `${8 + i} L` : "—";
-    out.push({
+    const date = daysAgo(i * 2 + 1);
+    const responsable = RESPONSABLES[i % RESPONSABLES.length]!;
+    const base = {
       id: `f${i + 1}`,
       ref: `FS-2026-${String(i + 1).padStart(3, "0")}`,
-      date: daysAgo(i * 3 + 1),
+      date,
+      heure: `0${7 + (i % 3)}:${i % 2 ? "30" : "00"}`,
       zoneId: zone.id,
-      type,
-      produit,
-      quantite,
-      responsable: resp[i % resp.length]!,
-      notes:
-        type === "Suivi de plantation"
-          ? "Observation de routine, aucun signe de stress hydrique relevé."
-          : "Application réalisée en début de matinée, conditions météo favorables.",
+      responsable,
       historique: [
-        { date: daysAgo(i * 3 + 1), label: "Fiche créée" },
-        { date: daysAgo(i * 3), label: "Validation par le chef de culture" },
+        { date, label: "Fiche créée" },
+        { date: daysAgo(i * 2), label: "Validation par le chef de culture" },
       ],
-    });
+    };
+    if (type === "Traitement phytosanitaire") {
+      const p = PRODUITS_PHYTO[i % 4]!;
+      out.push({
+        ...base,
+        type,
+        produit: p.nom,
+        matiereActive: p.ma,
+        cible: p.cible,
+        dar: p.dar,
+        methode: METHODES_PHYTO[i % 3]!,
+        quantite: `${(1 + (i % 4) * 0.5).toFixed(1)} L/ha`,
+        notes: "Application en début de matinée, conditions météo favorables, pas de vent.",
+      });
+    } else if (type === "Apport d'engrais") {
+      const e = ENGRAIS[i % 4]!;
+      out.push({
+        ...base,
+        type,
+        produit: e.nom,
+        typeEngrais: e.type,
+        methode: METHODES_ENGRAIS[i % 3]!,
+        stadeCulture: STADES[i % STADES.length]!,
+        quantite: `${20 + i * 2} kg`,
+        notes: "Apport réalisé selon le plan de fertilisation hebdomadaire.",
+      });
+    } else {
+      out.push({
+        ...base,
+        type,
+        produit: `Suivi ${zone.culture.toLowerCase()}`,
+        stade: STADES[i % STADES.length]!,
+        etatSanitaire: ETATS[i % 3]!,
+        photos: i % 2 === 0 ? ["photo-parcelle-1.jpg"] : [],
+        quantite: "—",
+        notes: "Observation de routine, aucun signe de stress hydrique relevé.",
+      });
+    }
   }
   return out;
 }
 
 function buildDepenses(fiches: Fiche[]): Depense[] {
-  const cats: Depense["categorie"][] = ["Intrants", "Main d'œuvre", "Équipement"];
   const out: Depense[] = [];
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 28; i++) {
     const zone = ZONES[i % ZONES.length]!;
-    const categorie = cats[i % 3]!;
-    const montant = 2500 + ((i * 1737) % 12000);
+    const categorie = CATEGORIES[i % CATEGORIES.length]!;
+    const montant = 1800 + ((i * 1737) % 9000);
     out.push({
       id: `d${i + 1}`,
       date: daysAgo((i % 28) + 1),
       zoneId: zone.id,
       categorie,
       libelle:
-        categorie === "Intrants"
-          ? `Achat ${produits.Engrais[i % 4]!.toLowerCase()}`
-          : categorie === "Main d'œuvre"
-            ? "Équipe saisonnière — semaine"
-            : "Maintenance goutte-à-goutte",
+        categorie === "Intrants phytosanitaires"
+          ? `Achat ${PRODUITS_PHYTO[i % 4]!.nom.toLowerCase()}`
+          : categorie === "Engrais"
+            ? `Achat ${ENGRAIS[i % 4]!.nom.toLowerCase()}`
+            : categorie === "Main d'œuvre"
+              ? "Équipe saisonnière — semaine"
+              : categorie === "Équipement"
+                ? "Maintenance goutte-à-goutte"
+                : "Transport palettes vers Agadir",
       montant,
+      statut: i % 6 === 0 ? "En attente" : "Validé",
       ficheId: i < 8 ? fiches[i]!.id : undefined,
     });
   }
@@ -200,6 +281,8 @@ const ACTIVITES: Activite[] = [
   { id: "a6", label: "Suivi de plantation fraisier — Serre B3 — stade floraison", time: "hier" },
 ];
 
+export type DarAlerte = { ficheId: string; zoneId: string; dateLimite: string; recolte: string };
+
 type Ctx = {
   zones: Zone[];
   fiches: Fiche[];
@@ -216,8 +299,9 @@ type Ctx = {
   updateZone: (id: string, patch: Partial<Zone>) => void;
   removeZone: (id: string) => void;
   addFiche: (f: Omit<Fiche, "id" | "ref" | "historique">) => Fiche;
-  addDepense: (d: Omit<Depense, "id">) => void;
-  setBudget: (zoneId: string, patch: Partial<Omit<Budget, "zoneId">>) => void;
+  addDepense: (d: Omit<Depense, "id" | "statut"> & { statut?: Depense["statut"] }) => void;
+  validerDepense: (id: string) => void;
+  setBudget: (zoneId: string, cat: Categorie, montant: number) => void;
   setSeuils: (orange: number, rouge: number) => void;
   setDestinataires: (list: string[]) => void;
   validerConfig: () => void;
@@ -226,8 +310,13 @@ type Ctx = {
   pushActivite: (label: string) => void;
   zoneBudget: (zoneId: string) => number;
   zoneConsomme: (zoneId: string) => number;
+  zoneEnAttente: (zoneId: string) => number;
+  catBudget: (zoneId: string, cat: Categorie) => number;
+  catConsomme: (zoneId: string, cat: Categorie) => number;
   zoneNiveau: (zoneId: string) => "ok" | "orange" | "rouge";
   alertes: { zoneId: string; nom: string; pct: number; niveau: "orange" | "rouge" }[];
+  darAlertes: DarAlerte[];
+  ficheDar: (f: Fiche) => DarAlerte | null;
 };
 
 const FarmContext = createContext<Ctx | null>(null);
@@ -252,10 +341,18 @@ export function FarmProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Ctx>(() => {
     const zoneBudget = (zoneId: string) => {
       const b = budgets.find((x) => x.zoneId === zoneId);
-      return b ? b.intrants + b.mainOeuvre + b.equipement : 0;
+      return b ? CATEGORIES.reduce((s, c) => s + (b.montants[c] ?? 0), 0) : 0;
     };
+    const catBudget = (zoneId: string, cat: Categorie) =>
+      budgets.find((x) => x.zoneId === zoneId)?.montants[cat] ?? 0;
     const zoneConsomme = (zoneId: string) =>
-      depenses.filter((d) => d.zoneId === zoneId).reduce((s, d) => s + d.montant, 0);
+      depenses.filter((d) => d.zoneId === zoneId && d.statut === "Validé").reduce((s, d) => s + d.montant, 0);
+    const zoneEnAttente = (zoneId: string) =>
+      depenses.filter((d) => d.zoneId === zoneId && d.statut === "En attente").reduce((s, d) => s + d.montant, 0);
+    const catConsomme = (zoneId: string, cat: Categorie) =>
+      depenses
+        .filter((d) => d.zoneId === zoneId && d.categorie === cat && d.statut === "Validé")
+        .reduce((s, d) => s + d.montant, 0);
     const zoneNiveau = (zoneId: string): "ok" | "orange" | "rouge" => {
       const b = zoneBudget(zoneId);
       if (!b) return "ok";
@@ -272,6 +369,17 @@ export function FarmProvider({ children }: { children: ReactNode }) {
       })
       .filter((a) => a.niveau !== "ok") as Ctx["alertes"];
 
+    const ficheDar = (f: Fiche): DarAlerte | null => {
+      if (f.type !== "Traitement phytosanitaire" || !f.dar) return null;
+      const zone = zones.find((z) => z.id === f.zoneId);
+      if (!zone?.prochaineRecolte) return null;
+      const limite = addDays(f.date, f.dar);
+      if (new Date(zone.prochaineRecolte) >= new Date(limite)) return null;
+      if (new Date(limite) < new Date()) return null;
+      return { ficheId: f.id, zoneId: f.zoneId, dateLimite: limite, recolte: zone.prochaineRecolte };
+    };
+    const darAlertes = fiches.map(ficheDar).filter(Boolean) as DarAlerte[];
+
     return {
       zones,
       fiches,
@@ -286,12 +394,17 @@ export function FarmProvider({ children }: { children: ReactNode }) {
       lastSync,
       zoneBudget,
       zoneConsomme,
+      zoneEnAttente,
+      catBudget,
+      catConsomme,
       zoneNiveau,
       alertes,
+      darAlertes,
+      ficheDar,
       addZone: (z) => {
         const id = `z${Date.now()}`;
         setZones((prev) => [...prev, { ...z, id }]);
-        setBudgets((prev) => [...prev, { zoneId: id, intrants: 8000, mainOeuvre: 10000, equipement: 4000 }]);
+        setBudgets((prev) => [...prev, { zoneId: id, montants: { ...DEFAULT_BUDGET } }]);
         pushActivite(`Nouvelle zone créée — ${z.nom}`);
       },
       updateZone: (id, patch) => setZones((prev) => prev.map((z) => (z.id === id ? { ...z, ...patch } : z))),
@@ -315,7 +428,8 @@ export function FarmProvider({ children }: { children: ReactNode }) {
         return fiche;
       },
       addDepense: (d) => {
-        setDepenses((prev) => [{ ...d, id: `d${Date.now()}` }, ...prev]);
+        const dep: Depense = { statut: "En attente", ...d, id: `d${Date.now()}` };
+        setDepenses((prev) => [dep, ...prev]);
         if (d.ficheId) {
           setFiches((prev) =>
             prev.map((f) =>
@@ -335,8 +449,15 @@ export function FarmProvider({ children }: { children: ReactNode }) {
           `Dépense affectée — ${d.categorie} — ${zones.find((z) => z.id === d.zoneId)?.nom ?? ""} — ${d.montant.toLocaleString("fr-FR")} MAD`,
         );
       },
-      setBudget: (zoneId, patch) =>
-        setBudgets((prev) => prev.map((b) => (b.zoneId === zoneId ? { ...b, ...patch } : b))),
+      validerDepense: (id) => {
+        setDepenses((prev) => prev.map((d) => (d.id === id ? { ...d, statut: "Validé" } : d)));
+        const d = depenses.find((x) => x.id === id);
+        if (d) pushActivite(`Allocation validée — ${d.libelle} — ${d.montant.toLocaleString("fr-FR")} MAD`);
+      },
+      setBudget: (zoneId, cat, montant) =>
+        setBudgets((prev) =>
+          prev.map((b) => (b.zoneId === zoneId ? { ...b, montants: { ...b.montants, [cat]: montant } } : b)),
+        ),
       setSeuils: (o, r) => {
         setSO(o);
         setSR(r);
