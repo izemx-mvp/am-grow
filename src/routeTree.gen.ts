@@ -16,6 +16,7 @@ import { Route as ShellConfigurationRouteImport } from './routes/_shell.configur
 import { Route as ShellDashboardRouteImport } from './routes/_shell.dashboard'
 import { Route as ShellSuiviIndexRouteImport } from './routes/_shell.suivi.index'
 import { Route as ShellSuiviFicheIdRouteImport } from './routes/_shell.suivi.$ficheId'
+import { Route as ShellSuiviZoneZoneIdRouteImport } from './routes/_shell.suivi.zone.$zoneId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -51,6 +52,11 @@ const ShellSuiviFicheIdRoute = ShellSuiviFicheIdRouteImport.update({
   path: '/suivi/$ficheId',
   getParentRoute: () => ShellRoute,
 } as any)
+const ShellSuiviZoneZoneIdRoute = ShellSuiviZoneZoneIdRouteImport.update({
+  id: '/suivi/zone/$zoneId',
+  path: '/suivi/zone/$zoneId',
+  getParentRoute: () => ShellRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof ShellDashboardRoute
   '/suivi/$ficheId': typeof ShellSuiviFicheIdRoute
   '/suivi/': typeof ShellSuiviIndexRoute
+  '/suivi/zone/$zoneId': typeof ShellSuiviZoneZoneIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof ShellDashboardRoute
   '/suivi/$ficheId': typeof ShellSuiviFicheIdRoute
   '/suivi': typeof ShellSuiviIndexRoute
+  '/suivi/zone/$zoneId': typeof ShellSuiviZoneZoneIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/_shell/dashboard': typeof ShellDashboardRoute
   '/_shell/suivi/$ficheId': typeof ShellSuiviFicheIdRoute
   '/_shell/suivi/': typeof ShellSuiviIndexRoute
+  '/_shell/suivi/zone/$zoneId': typeof ShellSuiviZoneZoneIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/suivi/$ficheId'
     | '/suivi/'
+    | '/suivi/zone/$zoneId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/suivi/$ficheId'
     | '/suivi'
+    | '/suivi/zone/$zoneId'
   id:
     | '__root__'
     | '/'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '/_shell/dashboard'
     | '/_shell/suivi/$ficheId'
     | '/_shell/suivi/'
+    | '/_shell/suivi/zone/$zoneId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -162,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellSuiviFicheIdRouteImport
       parentRoute: typeof ShellRoute
     }
+    '/_shell/suivi/zone/$zoneId': {
+      id: '/_shell/suivi/zone/$zoneId'
+      path: '/suivi/zone/$zoneId'
+      fullPath: '/suivi/zone/$zoneId'
+      preLoaderRoute: typeof ShellSuiviZoneZoneIdRouteImport
+      parentRoute: typeof ShellRoute
+    }
   }
 }
 
@@ -171,6 +190,7 @@ interface ShellRouteChildren {
   ShellDashboardRoute: typeof ShellDashboardRoute
   ShellSuiviFicheIdRoute: typeof ShellSuiviFicheIdRoute
   ShellSuiviIndexRoute: typeof ShellSuiviIndexRoute
+  ShellSuiviZoneZoneIdRoute: typeof ShellSuiviZoneZoneIdRoute
 }
 
 const ShellRouteChildren: ShellRouteChildren = {
@@ -179,6 +199,7 @@ const ShellRouteChildren: ShellRouteChildren = {
   ShellDashboardRoute: ShellDashboardRoute,
   ShellSuiviFicheIdRoute: ShellSuiviFicheIdRoute,
   ShellSuiviIndexRoute: ShellSuiviIndexRoute,
+  ShellSuiviZoneZoneIdRoute: ShellSuiviZoneZoneIdRoute,
 }
 
 const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
