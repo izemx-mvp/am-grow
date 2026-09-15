@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { CheckCircle2, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { CATEGORIES, fmtTime, useFarm, type Zone } from "@/lib/farm-store";
+import { CATEGORIES, useFarm, type Zone } from "@/lib/farm-store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_shell/configuration")({
@@ -13,10 +13,10 @@ export const Route = createFileRoute("/_shell/configuration")({
       {
         name: "description",
         content:
-          "Connexion Zoho Books, référentiel des zones et cultures, seuils budgétaires et destinataires d'alertes.",
+          "Référentiel des zones et cultures, seuils budgétaires et destinataires d'alertes de la ferme AM Grow.",
       },
       { property: "og:title", content: "Configuration — AM Grow Control" },
-      { property: "og:description", content: "Zones, cultures, seuils budgétaires et connexion Zoho Books." },
+      { property: "og:description", content: "Zones, cultures et seuils budgétaires de la ferme AM Grow." },
     ],
   }),
   component: ConfigurationPage,
@@ -24,20 +24,6 @@ export const Route = createFileRoute("/_shell/configuration")({
 
 function ConfigurationPage() {
   const farm = useFarm();
-  const [testing, setTesting] = useState(false);
-  const [step, setStep] = useState("");
-
-  const testConnexion = () => {
-    setTesting(true);
-    setStep("Connexion à Zoho Books…");
-    setTimeout(() => setStep("Vérification des accès…"), 750);
-    setTimeout(() => {
-      farm.syncZoho();
-      setTesting(false);
-      setStep("");
-      toast.success("Connexion Zoho Books vérifiée — synchronisation mise à jour");
-    }, 1500);
-  };
 
   const save = (label: string) => {
     farm.validerConfig();
@@ -50,9 +36,10 @@ function ConfigurationPage() {
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Configuration</h1>
           <p className="text-sm text-muted-foreground">
-            Référentiel de la ferme, connexion comptable et règles d'alerte budgétaire.
+            Référentiel de la ferme et règles d'alerte budgétaire.
           </p>
         </div>
+
         {farm.configValidee && (
           <span className="flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">
             <CheckCircle2 className="h-4 w-4" /> Configuration active ✅
