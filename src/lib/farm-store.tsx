@@ -240,8 +240,8 @@ function buildDepenses(fiches: Fiche[]): Depense[] {
   const out: Depense[] = [];
   for (let i = 0; i < 28; i++) {
     const zone = ZONES[i % ZONES.length]!;
-    const categorie = CATEGORIES[i % CATEGORIES.length]!;
-    const montant = 1800 + ((i * 1737) % 9000);
+    const categorie = CATEGORIES[(i + Math.floor(i / CATEGORIES.length)) % CATEGORIES.length]!;
+    const montant = 900 + ((i * 617) % 4200);
     out.push({
       id: `d${i + 1}`,
       date: daysAgo((i % 28) + 1),
