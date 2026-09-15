@@ -98,11 +98,11 @@ const ZONES: Zone[] = [
 ];
 
 const BUDGETS: Budget[] = [
-  { zoneId: "z1", intrants: 42000, mainOeuvre: 55000, equipement: 18000 },
-  { zoneId: "z2", intrants: 30000, mainOeuvre: 38000, equipement: 12000 },
-  { zoneId: "z3", intrants: 52000, mainOeuvre: 68000, equipement: 22000 },
-  { zoneId: "z4", intrants: 36000, mainOeuvre: 44000, equipement: 15000 },
-  { zoneId: "z5", intrants: 28000, mainOeuvre: 35000, equipement: 20000 },
+  { zoneId: "z1", intrants: 12000, mainOeuvre: 16000, equipement: 5000 },
+  { zoneId: "z2", intrants: 9000, mainOeuvre: 11000, equipement: 4000 },
+  { zoneId: "z3", intrants: 14000, mainOeuvre: 18000, equipement: 6000 },
+  { zoneId: "z4", intrants: 10000, mainOeuvre: 12000, equipement: 4000 },
+  { zoneId: "z5", intrants: 7000, mainOeuvre: 9000, equipement: 5000 },
 ];
 
 const produits: Record<Fiche["type"], string[]> = {
@@ -291,7 +291,7 @@ export function FarmProvider({ children }: { children: ReactNode }) {
       addZone: (z) => {
         const id = `z${Date.now()}`;
         setZones((prev) => [...prev, { ...z, id }]);
-        setBudgets((prev) => [...prev, { zoneId: id, intrants: 20000, mainOeuvre: 25000, equipement: 10000 }]);
+        setBudgets((prev) => [...prev, { zoneId: id, intrants: 8000, mainOeuvre: 10000, equipement: 4000 }]);
         pushActivite(`Nouvelle zone créée — ${z.nom}`);
       },
       updateZone: (id, patch) => setZones((prev) => prev.map((z) => (z.id === id ? { ...z, ...patch } : z))),

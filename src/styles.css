@@ -174,7 +174,7 @@
     top: -18vw;
     background: radial-gradient(
       circle at center,
-      color-mix(in oklab, var(--primary-glow) 40%, transparent) 0%,
+      color-mix(in oklab, var(--primary-glow) 58%, transparent) 0%,
       transparent 70%
     );
     animation: aurora-a 26s ease-in-out infinite;
@@ -186,7 +186,7 @@
     top: 4vw;
     background: radial-gradient(
       circle at center,
-      color-mix(in oklab, var(--accent-glow) 45%, transparent) 0%,
+      color-mix(in oklab, var(--accent-glow) 62%, transparent) 0%,
       transparent 70%
     );
     animation: aurora-b 22s ease-in-out infinite;
@@ -205,7 +205,7 @@
   filter: blur(100px);
   background: radial-gradient(
     circle at center,
-    color-mix(in oklab, var(--primary-glow) 32%, transparent) 0%,
+    color-mix(in oklab, var(--primary-glow) 45%, transparent) 0%,
     color-mix(in oklab, var(--accent-glow) 18%, transparent) 45%,
     transparent 72%
   );
