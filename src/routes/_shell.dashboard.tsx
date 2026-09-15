@@ -34,6 +34,8 @@ const MOIS = ["Avr", "Mai", "Juin", "Juil", "Août", "Sept"];
 
 function DashboardPage() {
   const { zones, fiches, depenses, alertes, configValidee, lastSync, zoneConsomme, activites } = useFarm();
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
   const navigate = useNavigate();
 
   const totalConsomme = depenses.reduce((s, d) => s + d.montant, 0);
