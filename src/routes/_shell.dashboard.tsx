@@ -115,7 +115,7 @@ function DashboardPage() {
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
           <Link to="/configuration" className="glass glass-lift glass-gold block h-full rounded-2xl p-5">
             <RefreshCw className="h-5 w-5 text-accent-foreground" />
-            <p className="mt-3 font-display text-xl font-bold">{fmtTime(lastSync)}</p>
+            <p className="mt-3 font-display text-xl font-bold">{hydrated ? fmtTime(lastSync) : "—"}</p>
             <p className="mt-1 text-sm text-muted-foreground">Dernière synchro Zoho Books</p>
           </Link>
         </motion.div>
