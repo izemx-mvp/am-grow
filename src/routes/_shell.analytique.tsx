@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, Download, Eye, FileText, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Bot, Check, Download, Eye, FileText, Loader2, Plus, Send, Sparkles, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import {
   Bar,
@@ -15,8 +15,8 @@ import {
 import { toast } from "sonner";
 
 import { CountUp } from "@/components/CountUp";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { fmtDate, fmtMAD, useFarm, type Rapport } from "@/lib/farm-store";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CATEGORIES, fmtDate, fmtMAD, useFarm, type Categorie, type Rapport } from "@/lib/farm-store";
 
 export const Route = createFileRoute("/_shell/analytique")({
   head: () => ({
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_shell/analytique")({
       {
         name: "description",
         content:
-          "Affectation des dépenses par zone et par culture, suivi des budgets, alertes et assistant IA d'analyse.",
+          "Affectation des dépenses par zone et par culture, matrice budgétaire, validation des allocations et assistant IA.",
       },
       { property: "og:title", content: "Analytique & Budget — AM Grow Control" },
       { property: "og:description", content: "Allocation des dépenses par zone, budgets et assistant IA." },
@@ -34,11 +34,26 @@ export const Route = createFileRoute("/_shell/analytique")({
   component: AnalytiquePage,
 });
 
-const CATS = ["Intrants", "Main d'œuvre", "Équipement"] as const;
+const CATS = CATEGORIES;
 
 function AnalytiquePage() {
   const farm = useFarm();
-  const { zones, depenses, fiches, rapports, addRapport, zoneBudget, zoneConsomme, zoneNiveau } = farm;
+  const {
+    zones,
+    depenses,
+    fiches,
+    rapports,
+    addRapport,
+    addDepense,
+    validerDepense,
+    zoneBudget,
+    zoneConsomme,
+    zoneEnAttente,
+    catBudget,
+    catConsomme,
+    zoneNiveau,
+    alertes,
+  } = farm;
 
   const [zoneSel, setZoneSel] = useState("all");
   const [catSel, setCatSel] = useState("all");
@@ -56,30 +71,46 @@ function AnalytiquePage() {
     [depenses, zoneSel, catSel],
   );
 
-  const total = filtered.reduce((s, d) => s + d.montant, 0);
+  const total = filtered.filter((d) => d.statut === "Validé").reduce((s, d) => s + d.montant, 0);
+  const enAttente = filtered.filter((d) => d.statut === "En attente").reduce((s, d) => s + d.montant, 0);
+
+  const budgetGlobal = zones.reduce((s, z) => s + zoneBudget(z.id), 0);
+  const consoGlobal = zones.reduce((s, z) => s + zoneConsomme(z.id), 0);
+  const tauxMoyen = budgetGlobal ? Math.round((consoGlobal / budgetGlobal) * 100) : 0;
+  const now = new Date();
+  const jourDuMois = now.getDate();
+  const joursDuMois = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const projection = Math.round((consoGlobal / jourDuMois) * joursDuMois);
 
   const chartData = zones
     .filter((z) => zoneSel === "all" || z.id === zoneSel)
     .map((z) => {
       const row: Record<string, string | number> = { zone: z.nom };
       CATS.forEach((c) => {
-        row[c] = filtered.filter((d) => d.zoneId === z.id && d.categorie === c).reduce((s, d) => s + d.montant, 0);
+        row[c] = filtered
+          .filter((d) => d.zoneId === z.id && d.categorie === c && d.statut === "Validé")
+          .reduce((s, d) => s + d.montant, 0);
       });
       return row;
     });
 
-  const selBudget = zoneSel === "all" ? zones.reduce((s, z) => s + zoneBudget(z.id), 0) : zoneBudget(zoneSel);
-  const selConso = zoneSel === "all" ? zones.reduce((s, z) => s + zoneConsomme(z.id), 0) : zoneConsomme(zoneSel);
+  const selBudget = zoneSel === "all" ? budgetGlobal : zoneBudget(zoneSel);
+  const selConso = zoneSel === "all" ? consoGlobal : zoneConsomme(zoneSel);
   const selPct = selBudget ? Math.round((selConso / selBudget) * 100) : 0;
-  const selNiveau =
-    selPct >= farm.seuilRouge ? "rouge" : selPct >= farm.seuilOrange ? "orange" : "ok";
-  const barColor =
-    selNiveau === "rouge" ? "bg-destructive" : selNiveau === "orange" ? "bg-warning" : "bg-primary";
+  const selNiveau = selPct >= farm.seuilRouge ? "rouge" : selPct >= farm.seuilOrange ? "orange" : "ok";
+  const barColor = selNiveau === "rouge" ? "bg-destructive" : selNiveau === "orange" ? "bg-warning" : "bg-primary";
+
+  const cellColor = (pct: number) =>
+    pct > 100
+      ? "bg-destructive/15 text-destructive"
+      : pct >= 70
+        ? "bg-warning/20 text-accent-foreground"
+        : "bg-primary/10 text-primary";
 
   const generer = () => {
     setGenerating(true);
-    setStep("Récupération des dépenses…");
-    setTimeout(() => setStep("Calcul par zone…"), 700);
+    setStep("Récupération des dépenses validées…");
+    setTimeout(() => setStep("Calcul par zone et catégorie…"), 700);
     setTimeout(() => setStep("Génération du rapport…"), 1400);
     setTimeout(() => {
       addRapport({
@@ -97,11 +128,12 @@ function AnalytiquePage() {
 
   const telecharger = (r: Rapport) => {
     const contenu = [
+      `AM GROW — Sidi Ouassay (Agadir)`,
       `${r.titre}`,
       `Généré le ${fmtDate(r.date)}`,
       `Lignes analysées : ${r.lignes}`,
       `Zones couvertes : ${r.zones}`,
-      `Total : ${fmtMAD(r.total)}`,
+      `Total validé : ${fmtMAD(r.total)}`,
       "",
       ...zones.map((z) => `${z.nom} — consommé ${fmtMAD(zoneConsomme(z.id))} / budget ${fmtMAD(zoneBudget(z.id))}`),
     ].join("\n");
@@ -116,6 +148,13 @@ function AnalytiquePage() {
 
   const ctl = "h-10 rounded-xl border border-border bg-card/70 px-3 text-sm outline-none focus:border-primary/60";
 
+  const kpis = [
+    { label: "Budget consommé ce mois", value: consoGlobal, suffix: " MAD" },
+    { label: "Zones en alerte", value: alertes.length },
+    { label: "Taux de consommation moyen", value: tauxMoyen, suffix: " %" },
+    { label: "Projection de fin de mois", value: projection, suffix: " MAD" },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl space-y-5">
       <div>
@@ -123,6 +162,78 @@ function AnalytiquePage() {
         <p className="text-sm text-muted-foreground">
           Chaque achat et chaque consommation affectés à leur zone, leur parcelle et leur culture.
         </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((k, i) => (
+          <motion.div
+            key={k.label}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06 }}
+            className="glass glass-lift rounded-2xl p-5"
+          >
+            <p className="font-display text-2xl font-bold">
+              <CountUp value={k.value} suffix={k.suffix ?? ""} />
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{k.label}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="glass glass-lift overflow-hidden rounded-2xl p-5">
+        <h2 className="font-display text-lg font-semibold">Matrice budgétaire — zone × catégorie</h2>
+        <p className="text-sm text-muted-foreground">
+          Part du budget consommée (dépenses validées). Vert &lt; 70%, orange 70-100%, rouge &gt; 100%.
+        </p>
+        <div className="mt-4 overflow-x-auto scroll-green">
+          <table className="w-full min-w-[820px] text-sm">
+            <thead>
+              <tr className="border-b text-left text-muted-foreground">
+                <th className="py-2 pr-3 font-medium">Zone</th>
+                {CATS.map((c) => (
+                  <th key={c} className="py-2 pr-3 font-medium">
+                    {c}
+                  </th>
+                ))}
+                <th className="py-2 font-medium">Total zone</th>
+              </tr>
+            </thead>
+            <tbody>
+              {zones.map((z) => {
+                const b = zoneBudget(z.id);
+                const c = zoneConsomme(z.id);
+                const pctZ = b ? Math.round((c / b) * 100) : 0;
+                return (
+                  <tr key={z.id} className="border-b last:border-0">
+                    <td className="py-2 pr-3 font-medium whitespace-nowrap">
+                      <button onClick={() => setZoneSel(z.id)} className="hover:text-primary hover:underline">
+                        {z.nom}
+                      </button>
+                    </td>
+                    {CATS.map((cat) => {
+                      const cb = catBudget(z.id, cat);
+                      const cc = catConsomme(z.id, cat);
+                      const pct = cb ? Math.round((cc / cb) * 100) : 0;
+                      return (
+                        <td key={cat} className="py-2 pr-3">
+                          <span className={`inline-block rounded-lg px-2.5 py-1 text-xs font-semibold ${cellColor(pct)}`}>
+                            {pct}% · {fmtMAD(cc)}
+                          </span>
+                        </td>
+                      );
+                    })}
+                    <td className="py-2">
+                      <span className={`inline-block rounded-lg px-2.5 py-1 text-xs font-semibold ${cellColor(pctZ)}`}>
+                        {pctZ}%
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="glass rounded-2xl p-5">
@@ -143,8 +254,10 @@ function AnalytiquePage() {
           </select>
           <p className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{filtered.length}</span> ligne(s) ·{" "}
-            <span className="font-semibold text-foreground">{fmtMAD(total)}</span>
+            <span className="font-semibold text-foreground">{fmtMAD(total)}</span> validés ·{" "}
+            <span className="font-semibold text-accent-foreground">{fmtMAD(enAttente)}</span> en attente
           </p>
+          <DepenseManuelle onAdd={addDepense} />
         </div>
 
         <div className="mt-4">
@@ -175,10 +288,12 @@ function AnalytiquePage() {
                 <XAxis dataKey="zone" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis fontSize={11} tickLine={false} axisLine={false} width={60} />
                 <RTooltip formatter={(v: number) => fmtMAD(v)} contentStyle={{ borderRadius: 12 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="Intrants" stackId="a" fill="var(--primary)" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Main d'œuvre" stackId="a" fill="var(--primary-glow)" />
-                <Bar dataKey="Équipement" stackId="a" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Intrants phytosanitaires" stackId="a" fill="var(--primary)" />
+                <Bar dataKey="Engrais" stackId="a" fill="var(--primary-glow)" />
+                <Bar dataKey="Main d'œuvre" stackId="a" fill="var(--accent)" />
+                <Bar dataKey="Équipement" stackId="a" fill="var(--accent-glow)" />
+                <Bar dataKey="Transport/Export" stackId="a" fill="var(--muted-foreground)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -186,14 +301,16 @@ function AnalytiquePage() {
 
         <div className="glass glass-lift rounded-2xl p-5">
           <h2 className="font-display text-lg font-semibold">Suivi budgétaire par zone</h2>
+          <p className="text-xs text-muted-foreground">Cliquez sur une zone pour filtrer l'allocation.</p>
           <div className="mt-4 max-h-72 space-y-4 overflow-y-auto pr-2 scroll-green">
             {zones.map((z) => {
               const b = zoneBudget(z.id);
               const c = zoneConsomme(z.id);
               const pct = b ? Math.round((c / b) * 100) : 0;
               const n = zoneNiveau(z.id);
+              const att = zoneEnAttente(z.id);
               return (
-                <div key={z.id}>
+                <button key={z.id} onClick={() => setZoneSel(z.id)} className="block w-full text-left">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">{z.nom}</span>
                     <span className="flex items-center gap-2">
@@ -219,7 +336,10 @@ function AnalytiquePage() {
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
                   </div>
-                </div>
+                  {att > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">{fmtMAD(att)} en attente de validation</p>
+                  )}
+                </button>
               );
             })}
           </div>
@@ -234,15 +354,16 @@ function AnalytiquePage() {
           </p>
         </div>
         <div className="overflow-x-auto scroll-green">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Date</th>
+                <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Zone / culture</th>
                 <th className="px-4 py-3 font-medium">Catégorie</th>
-                <th className="px-4 py-3 font-medium">Libellé</th>
                 <th className="px-4 py-3 font-medium">Montant</th>
-                <th className="px-4 py-3 font-medium">Fiche d'origine</th>
+                <th className="px-4 py-3 font-medium">Statut</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -250,18 +371,11 @@ function AnalytiquePage() {
                 const z = zones.find((x) => x.id === d.zoneId);
                 const f = fiches.find((x) => x.id === d.ficheId);
                 return (
-                  <tr key={d.id} className="border-t transition-colors hover:bg-muted/40">
+                  <tr
+                    key={d.id}
+                    className={`border-t transition-colors hover:bg-muted/40 ${d.statut === "En attente" ? "bg-warning/5" : ""}`}
+                  >
                     <td className="px-4 py-3 whitespace-nowrap">{fmtDate(d.date)}</td>
-                    <td className="px-4 py-3">
-                      {z?.nom} <span className="text-muted-foreground">· {z?.culture}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                        {d.categorie}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">{d.libelle}</td>
-                    <td className="px-4 py-3 font-semibold">{fmtMAD(d.montant)}</td>
                     <td className="px-4 py-3">
                       {f ? (
                         <Link
@@ -272,7 +386,41 @@ function AnalytiquePage() {
                           {f.ref}
                         </Link>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">Saisie manuelle</span>
+                      )}
+                      <span className="block text-xs text-muted-foreground">{d.libelle}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {z?.nom} <span className="text-muted-foreground">· {z?.culture}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                        {d.categorie}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-semibold">{fmtMAD(d.montant)}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          d.statut === "Validé"
+                            ? "bg-primary/10 text-primary"
+                            : "bg-warning/20 text-accent-foreground"
+                        }`}
+                      >
+                        {d.statut === "Validé" ? "Validé" : "En attente de validation"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {d.statut === "En attente" && (
+                        <button
+                          onClick={() => {
+                            validerDepense(d.id);
+                            toast.success("Allocation validée — intégrée aux totaux officiels");
+                          }}
+                          className="shine inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground"
+                        >
+                          <Check className="h-3.5 w-3.5" /> Valider l'allocation
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -280,7 +428,7 @@ function AnalytiquePage() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-16 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-16 text-center text-muted-foreground">
                     Aucun résultat pour cette recherche.
                   </td>
                 </tr>
@@ -355,6 +503,7 @@ function AnalytiquePage() {
           </DialogHeader>
           {preview && (
             <div className="space-y-2 text-sm">
+              <p className="font-display font-semibold text-primary">AM Grow — Sidi Ouassay (Agadir)</p>
               <p className="text-muted-foreground">
                 {fmtDate(preview.date)} · {preview.lignes} lignes · {preview.zones} zones
               </p>
@@ -376,6 +525,79 @@ function AnalytiquePage() {
 
       <AssistantIA />
     </div>
+  );
+}
+
+function DepenseManuelle({ onAdd }: { onAdd: ReturnType<typeof useFarm>["addDepense"] }) {
+  const { zones } = useFarm();
+  const [open, setOpen] = useState(false);
+  const [zoneId, setZoneId] = useState(zones[0]?.id ?? "");
+  const [categorie, setCategorie] = useState<Categorie>(CATEGORIES[0]);
+  const [montant, setMontant] = useState(2500);
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [libelle, setLibelle] = useState("");
+  const ctl = "h-10 w-full rounded-lg border border-border bg-background/80 px-3 text-sm outline-none focus:border-primary/60";
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button className="shine ml-auto flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
+          <Plus className="h-4 w-4" /> Ajouter une dépense manuelle
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display">Nouvelle dépense manuelle</DialogTitle>
+        </DialogHeader>
+        <label className="space-y-1.5">
+          <span className="text-sm font-medium">Zone</span>
+          <select className={ctl} value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
+            {zones.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.nom}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-sm font-medium">Catégorie</span>
+          <select className={ctl} value={categorie} onChange={(e) => setCategorie(e.target.value as Categorie)}>
+            {CATEGORIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-sm font-medium">Libellé</span>
+          <input className={ctl} value={libelle} onChange={(e) => setLibelle(e.target.value)} />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium">Montant (MAD)</span>
+            <input type="number" className={ctl} value={montant} onChange={(e) => setMontant(Number(e.target.value))} />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium">Date</span>
+            <input type="date" className={ctl} value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+        </div>
+        <button
+          onClick={() => {
+            if (!libelle.trim()) {
+              toast.error("Indiquez un libellé pour la dépense");
+              return;
+            }
+            onAdd({ zoneId, categorie, montant, date, libelle, statut: "En attente" });
+            setOpen(false);
+            setLibelle("");
+            toast.success("Dépense ajoutée — en attente de validation");
+          }}
+          className="shine mt-2 h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
+        >
+          Enregistrer la dépense
+        </button>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -509,7 +731,7 @@ function getAssistantReply(question: string, data: ReturnType<typeof useFarm>): 
     return `${alertes.length} alerte(s) active(s) : ${alertes.map((a) => `${a.nom} à ${a.pct}% (${a.niveau})`).join(", ")}.`;
   }
   if (q.includes("catégorie") || q.includes("categorie") || q.includes("répartition") || q.includes("repartition")) {
-    const parts = CATS.map((c) => {
+    const parts = CATEGORIES.map((c) => {
       const t = depenses.filter((d) => d.categorie === c).reduce((s, d) => s + d.montant, 0);
       return `${c} : ${fmtMAD(t)}`;
     });
