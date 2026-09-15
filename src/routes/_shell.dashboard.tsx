@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_shell/dashboard")({
 const MOIS = ["Avr", "Mai", "Juin", "Juil", "Août", "Sept"];
 
 function DashboardPage() {
-  const { zones, fiches, depenses, alertes, configValidee, lastSync, zoneConsomme } = useFarm();
+  const { zones, fiches, depenses, alertes, configValidee, lastSync, zoneConsomme, activites } = useFarm();
   const navigate = useNavigate();
 
   const totalConsomme = depenses.reduce((s, d) => s + d.montant, 0);
@@ -142,7 +142,7 @@ function DashboardPage() {
         <div className="glass glass-lift rounded-2xl p-5">
           <h2 className="font-display text-lg font-semibold">Activité récente</h2>
           <div className="mt-4 max-h-80 space-y-4 overflow-y-auto pr-2 scroll-green">
-            {useFarm().activites.map((a) => (
+            {activites.map((a) => (
               <div key={a.id} className="relative border-l-2 border-primary/25 pl-4">
                 <span className="absolute top-1.5 -left-[5px] h-2 w-2 rounded-full bg-accent" />
                 <p className="text-sm">{a.label}</p>
