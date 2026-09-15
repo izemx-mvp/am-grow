@@ -188,7 +188,7 @@ function Header() {
         </SheetContent>
       </Sheet>
 
-      <div className="relative max-w-md flex-1">
+      <div className="relative w-full max-w-md flex-1 md:flex-none md:w-80 lg:w-[26rem]">
         <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           value={q}
@@ -199,6 +199,7 @@ function Header() {
         />
       </div>
 
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
       <Popover onOpenChange={(o) => o && setSeen(true)}>
         <PopoverTrigger asChild>
           <button className="relative rounded-xl p-2 transition-colors hover:bg-muted" aria-label="Notifications">
