@@ -3,7 +3,7 @@ import { CheckCircle2, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { fmtTime, useFarm, type Zone } from "@/lib/farm-store";
+import { CATEGORIES, fmtTime, useFarm, type Zone } from "@/lib/farm-store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_shell/configuration")({

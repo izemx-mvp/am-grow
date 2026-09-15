@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpDown, Plus, RotateCcw, Search } from "lucide-react";
+import { AlertTriangle, ArrowUpDown, Plus, RotateCcw, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { fmtDate, useFarm, type Fiche } from "@/lib/farm-store";
+import { NouvelleFicheDialog } from "@/components/NouvelleFicheDialog";
+import { fmtDate, TYPES_FICHE, useFarm, type Fiche } from "@/lib/farm-store";
 
 export const Route = createFileRoute("/_shell/suivi/")({
   head: () => ({
@@ -24,15 +24,19 @@ export const Route = createFileRoute("/_shell/suivi/")({
 
 type SortKey = "date" | "zone" | "type" | "responsable";
 
-const TYPES: Fiche["type"][] = ["Traitement phytosanitaire", "Engrais", "Suivi de plantation"];
-
+const typeColor: Record<Fiche["type"], string> = {
+  "Traitement phytosanitaire": "bg-warning/20 text-accent-foreground",
+  "Apport d'engrais": "bg-primary/10 text-primary",
+  "Suivi de plantation": "bg-sky-100 text-sky-800",
+};
 
 function SuiviPage() {
-  const { fiches, zones, addFiche } = useFarm();
+  const { fiches, zones, addFiche, ficheDar, darAlertes } = useFarm();
   const [q, setQ] = useState("");
   const [type, setType] = useState("all");
   const [zone, setZone] = useState("all");
   const [periode, setPeriode] = useState("all");
+  const [responsable, setResponsable] = useState("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "date", dir: "desc" });
   const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
@@ -40,6 +44,7 @@ function SuiviPage() {
 
   const zoneName = (id: string) => zones.find((z) => z.id === id)?.nom ?? "—";
   const zoneCulture = (id: string) => zones.find((z) => z.id === id)?.culture ?? "";
+  const responsables = [...new Set(fiches.map((f) => f.responsable))].sort();
 
   // UNE SEULE source de vérité filtrée
   const filtered = useMemo(() => {
@@ -50,13 +55,15 @@ function SuiviPage() {
       const zn = `${zoneName(f.zoneId)} ${zoneCulture(f.zoneId)}`.toLowerCase();
       const okQ =
         !term ||
-        [f.ref, f.produit, f.type, f.responsable, f.notes, zn].some((v) => v.toLowerCase().includes(term));
+        [f.ref, f.produit, f.type, f.responsable, f.notes, f.cible ?? "", f.stade ?? "", zn].some((v) =>
+          v.toLowerCase().includes(term),
+        );
       const okType = type === "all" || f.type === type;
       const okZone = zone === "all" || f.zoneId === zone;
+      const okResp = responsable === "all" || f.responsable === responsable;
       const okPeriode =
-        periode === "all" ||
-        (now - new Date(f.date).getTime()) / 86400000 <= (limits[periode] ?? 99999);
-      return okQ && okType && okZone && okPeriode;
+        periode === "all" || (now - new Date(f.date).getTime()) / 86400000 <= (limits[periode] ?? 99999);
+      return okQ && okType && okZone && okPeriode && okResp;
     });
     const dir = sort.dir === "asc" ? 1 : -1;
     return [...out].sort((a, b) => {
@@ -66,7 +73,7 @@ function SuiviPage() {
         sort.key === "date" ? b.date : sort.key === "zone" ? zoneName(b.zoneId) : sort.key === "type" ? b.type : b.responsable;
       return av < bv ? -dir : av > bv ? dir : 0;
     });
-  }, [fiches, zones, q, type, zone, periode, sort]);
+  }, [fiches, zones, q, type, zone, periode, responsable, sort]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / perPage));
   const current = Math.min(page, pageCount);
@@ -80,6 +87,7 @@ function SuiviPage() {
     setType("all");
     setZone("all");
     setPeriode("all");
+    setResponsable("all");
     setSort({ key: "date", dir: "desc" });
     setPage(1);
     toast.success("Filtres réinitialisés");
@@ -96,8 +104,27 @@ function SuiviPage() {
             Traitements, engrais et suivis de plantation — ce qui était éclaté dans Excel, centralisé ici.
           </p>
         </div>
-        <NouvelleFiche open={open} setOpen={setOpen} onSubmit={addFiche} />
+        <NouvelleFicheDialog open={open} setOpen={setOpen} onSubmit={addFiche} />
       </div>
+
+      {darAlertes.length > 0 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+          <div className="text-sm">
+            <p className="font-semibold text-destructive">
+              {darAlertes.length} alerte(s) délai avant récolte (DAR) en cours
+            </p>
+            <ul className="mt-1 space-y-0.5 text-muted-foreground">
+              {darAlertes.map((a) => (
+                <li key={a.ficheId}>
+                  {zoneName(a.zoneId)} — récolte à ne pas anticiper avant le {fmtDate(a.dateLimite)} (récolte
+                  prévue le {fmtDate(a.recolte)})
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       <div className="glass rounded-2xl p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -115,7 +142,7 @@ function SuiviPage() {
           </div>
           <select value={type} onChange={(e) => { setType(e.target.value); setPage(1); }} className={ctl}>
             <option value="all">Tous les types</option>
-            {TYPES.map((t) => (
+            {TYPES_FICHE.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
@@ -126,6 +153,21 @@ function SuiviPage() {
             {zones.map((z) => (
               <option key={z.id} value={z.id}>
                 {z.nom}
+              </option>
+            ))}
+          </select>
+          <select
+            value={responsable}
+            onChange={(e) => {
+              setResponsable(e.target.value);
+              setPage(1);
+            }}
+            className={ctl}
+          >
+            <option value="all">Tous les responsables</option>
+            {responsables.map((r) => (
+              <option key={r} value={r}>
+                {r}
               </option>
             ))}
           </select>
@@ -148,7 +190,7 @@ function SuiviPage() {
 
       <div className="glass glass-lift overflow-hidden rounded-2xl">
         <div className="overflow-x-auto scroll-green">
-          <table className="w-full min-w-[860px] text-sm">
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-muted/50">
               <tr className="text-left">
                 {(
@@ -165,40 +207,56 @@ function SuiviPage() {
                     </button>
                   </th>
                 ))}
-                <th className="px-4 py-3 font-medium">Produit / intrant</th>
-                <th className="px-4 py-3 font-medium">Quantité</th>
+                <th className="px-4 py-3 font-medium">Produit / intervention</th>
+                <th className="px-4 py-3 font-medium">Dose / quantité</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
-              {rows.map((f) => (
-                <tr key={f.id} className="border-t transition-colors hover:bg-muted/40">
-                  <td className="px-4 py-3 whitespace-nowrap">{fmtDate(f.date)}</td>
-                  <td className="px-4 py-3">{zoneName(f.zoneId)}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      {f.type}
-                    </span>
-                    {f.isNew && (
-                      <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
-                        Nouveau
+              {rows.map((f) => {
+                const dar = ficheDar(f);
+                return (
+                  <tr key={f.id} className="border-t transition-colors hover:bg-muted/40">
+                    <td className="px-4 py-3 whitespace-nowrap">{fmtDate(f.date)}</td>
+                    <td className="px-4 py-3">
+                      <Link
+                        to="/suivi/zone/$zoneId"
+                        params={{ zoneId: f.zoneId }}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {zoneName(f.zoneId)}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${typeColor[f.type]}`}>
+                        {f.type}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{f.responsable}</td>
-                  <td className="px-4 py-3">{f.produit}</td>
-                  <td className="px-4 py-3">{f.quantite}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      to="/suivi/$ficheId"
-                      params={{ ficheId: f.id }}
-                      className="text-sm font-medium text-primary hover:underline"
-                    >
-                      Détail
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+                      {f.isNew && (
+                        <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground">
+                          Nouveau
+                        </span>
+                      )}
+                      {dar && (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+                          <AlertTriangle className="h-3 w-3" /> DAR
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{f.responsable}</td>
+                    <td className="px-4 py-3">{f.produit}</td>
+                    <td className="px-4 py-3">{f.quantite}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        to="/suivi/$ficheId"
+                        params={{ ficheId: f.id }}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Détail
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-16 text-center text-muted-foreground">
@@ -248,110 +306,5 @@ function SuiviPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function NouvelleFiche({
-  open,
-  setOpen,
-  onSubmit,
-}: {
-  open: boolean;
-  setOpen: (v: boolean) => void;
-  onSubmit: ReturnType<typeof useFarm>["addFiche"];
-}) {
-  const { zones } = useFarm();
-  const [form, setForm] = useState({
-    zoneId: zones[0]?.id ?? "",
-    type: TYPES[0] as Fiche["type"],
-    date: new Date().toISOString().slice(0, 10),
-    produit: "",
-    quantite: "",
-    responsable: "",
-    notes: "",
-  });
-
-  const ctl = "h-10 w-full rounded-lg border border-border bg-background/80 px-3 text-sm outline-none focus:border-primary/60";
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button className="shine flex h-10 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground">
-          <Plus className="h-4 w-4" /> Ajouter une fiche de suivi
-        </button>
-      </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="font-display">Nouvelle fiche de suivi</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="space-y-1.5">
-            <span className="text-sm font-medium">Zone</span>
-            <select className={ctl} value={form.zoneId} onChange={(e) => setForm({ ...form, zoneId: e.target.value })}>
-              {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.nom}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-sm font-medium">Type</span>
-            <select
-              className={ctl}
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as Fiche["type"] })}
-            >
-              {TYPES.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-sm font-medium">Date</span>
-            <input type="date" className={ctl} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-sm font-medium">Produit / intrant</span>
-            <input className={ctl} value={form.produit} onChange={(e) => setForm({ ...form, produit: e.target.value })} />
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-sm font-medium">Quantité</span>
-            <input className={ctl} value={form.quantite} onChange={(e) => setForm({ ...form, quantite: e.target.value })} />
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-sm font-medium">Responsable</span>
-            <input
-              className={ctl}
-              value={form.responsable}
-              onChange={(e) => setForm({ ...form, responsable: e.target.value })}
-            />
-          </label>
-          <label className="space-y-1.5 sm:col-span-2">
-            <span className="text-sm font-medium">Notes</span>
-            <textarea
-              className="min-h-20 w-full rounded-lg border border-border bg-background/80 p-3 text-sm outline-none focus:border-primary/60"
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
-          </label>
-        </div>
-        <button
-          onClick={() => {
-            if (!form.produit.trim()) {
-              toast.error("Indiquez le produit ou l'intervention");
-              return;
-            }
-            onSubmit({ ...form, responsable: form.responsable || "M. Amin" });
-            setOpen(false);
-            setForm({ ...form, produit: "", quantite: "", notes: "" });
-            toast.success("Fiche de suivi ajoutée");
-          }}
-          className="shine mt-2 h-10 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground"
-        >
-          Valider la fiche
-        </button>
-      </DialogContent>
-    </Dialog>
   );
 }
