@@ -603,7 +603,8 @@ function DepenseManuelle({ onAdd }: { onAdd: ReturnType<typeof useFarm>["addDepe
 
 const SUGGESTIONS = [
   "Quelle zone consomme le plus ce mois-ci ?",
-  "Y a-t-il des alertes budgétaires actives ?",
+  "Combien d'allocations sont en attente de validation ?",
+  "Quelle est la projection de fin de mois ?",
   "Quel est le budget restant sur la Serre A1 ?",
   "Résume la répartition des dépenses par catégorie",
 ];
@@ -725,6 +726,20 @@ function getAssistantReply(question: string, data: ReturnType<typeof useFarm>): 
     const b = zoneBudget(zoneMatch.id);
     const c = zoneConsomme(zoneMatch.id);
     return `${zoneMatch.nom} (${zoneMatch.culture}) : ${fmtMAD(c)} consommés sur un budget de ${fmtMAD(b)}, soit ${Math.round((c / b) * 100)}%. Budget restant : ${fmtMAD(Math.max(0, b - c))}.`;
+  }
+  if (q.includes("attente") || q.includes("valider") || q.includes("validation")) {
+    const att = depenses.filter((d) => d.statut === "En attente");
+    if (att.length === 0) return "Toutes les allocations sont validées : les totaux budgétaires sont à jour.";
+    const t = att.reduce((s, d) => s + d.montant, 0);
+    return `${att.length} allocation(s) en attente de validation pour ${fmtMAD(t)}. Elles restent visibles dans le tableau d'allocation mais sont exclues des totaux officiels tant qu'elles ne sont pas validées.`;
+  }
+  if (q.includes("projection") || q.includes("fin de mois")) {
+    const conso = zones.reduce((s, z) => s + zoneConsomme(z.id), 0);
+    const now = new Date();
+    const jours = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const proj = Math.round((conso / now.getDate()) * jours);
+    const budget = zones.reduce((s, z) => s + zoneBudget(z.id), 0);
+    return `Au rythme actuel (${fmtMAD(conso)} consommés en ${now.getDate()} jours), la projection de fin de mois est de ${fmtMAD(proj)} pour un budget de ${fmtMAD(budget)}${proj > budget ? " — dépassement à anticiper." : " — vous restez dans l'enveloppe."}`;
   }
   if (q.includes("alerte") || q.includes("seuil") || q.includes("critique")) {
     if (alertes.length === 0) return "Aucune alerte budgétaire active : toutes les zones sont sous les seuils configurés.";
